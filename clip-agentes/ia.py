@@ -105,14 +105,17 @@ def translate(text, src, dst):
     if time.time() > _google_blocked_until:
         providers.insert(0, ("Google", _google))
     errors = []
-    for name, fn in providers:
-        try:
-            return fn(text[:450], src, dst)
-        except Exception as exc:
-            errors.append(f"{name}: {str(exc)[:90]}")
-            if name == "Google":
-                _google_blocked_until = time.time() + 600
-    raise IAError("No pude traducir. " + " | ".join(errors))
+    for attempt in range(2):   # un corte de red momentaneo no debe tumbar todo el clip
+        for name, fn in providers:
+            try:
+                return fn(text[:450], src, dst)
+            except Exception as exc:
+                errors.append(f"{name}: {str(exc)[:90]}")
+                if name == "Google":
+                    _google_blocked_until = time.time() + 600
+        if attempt == 0:
+            time.sleep(2)
+    raise IAError("No pude traducir. " + " | ".join(errors[:2]))
 
 
 def _srt_time(t):

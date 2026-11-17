@@ -31,6 +31,8 @@ import envivo
 import ia
 import marca
 import publicar
+import radar
+import reaccion
 
 BASE = Path(__file__).resolve().parent
 VIDEOS = BASE / "videos"
@@ -43,7 +45,7 @@ PORT = publicar.PORT
 
 AGENTS = [
     ("receiver", "Receptor", "Baja tu video con yt-dlp", ["#FF2E88", "#ffb36b"]),
-    ("scout", "Cazador viral", "IA: elige el mejor momento", ["#ff5c5c", "#ffe36b"]),
+    ("scout", "Cazador viral", "IA + reacciones del publico", ["#ff5c5c", "#ffe36b"]),
     ("cleaner", "Limpiador", "Quita silencios y empareja volumen", ["#00E5FF", "#8a2cff"]),
     ("editor", "Editor", "Formato vertical 9:16 y titulo", ["#ffe36b", "#FF2E88"]),
     ("enhancer", "Mejorador", "Color, nitidez y 1080x1920", ["#3ddc97", "#00E5FF"]),
@@ -737,6 +739,25 @@ def viral_public(best):
     return {k: best.get(k) for k in keys}
 
 
+def fetch_reactions(job, workdir):
+    """Chat, mapa de calor y comentarios con minuto del video original (solo si viene de un enlace)."""
+    url = str(job.get("url", ""))
+    if Path(url.strip('"')).is_file():
+        return None
+    workdir.mkdir(parents=True, exist_ok=True)
+    on_proc, stop = ai_hooks(job)
+    log(job, "Buscando las reacciones de la audiencia (chat, mapa de calor y comentarios con minuto)...")
+    try:
+        react = reaccion.fetch(url, ytdlp_cmd(), workdir, on_proc, stop, log=lambda msg: log(job, msg))
+    except InterruptedError:
+        raise Cancelled()
+    except Exception:
+        react = None
+    log(job, ("Reacciones encontradas: " + reaccion.summary(react)) if react else
+        "Este video no publica datos de reacciones: se usa audio, imagen y texto.")
+    return react
+
+
 def scout_job(job, workdir):
     if job.get("viral"):
         v = job["viral"]
@@ -747,10 +768,11 @@ def scout_job(job, workdir):
     raw = Path(job["files"]["raw"])
     duration = probe(raw)[0]
     try:
+        react = fetch_reactions(job, workdir)
         db = cerebro.audio_db(ff, raw, on_proc=on_proc, stop=stop)
         if duration > MAX_SECONDS + 5:
             log(job, "Analizando el audio y la imagen de todo el video para encontrar el mejor momento...")
-            best = cerebro.pick_best(ff, raw, db, 0, duration, SCOUT_LENGTH, 3, job["title"], on_proc, stop)
+            best = cerebro.pick_best(ff, raw, db, 0, duration, SCOUT_LENGTH, 3, job["title"], on_proc, stop, react)
             if not best:
                 raise StepError("No encontre un momento con audio para elegir.")
             out = workdir / "seleccion.mp4"
@@ -761,7 +783,7 @@ def scout_job(job, workdir):
         else:
             cands = cerebro.window_candidates(db, 0, duration, duration, 1) or [{"start": 0, "end": duration}]
             best = cerebro.evaluate(ff, raw, {**cands[0], "start": 0, "end": duration}, job["title"],
-                                    on_proc=on_proc, stop=stop)
+                                    on_proc=on_proc, stop=stop, react=react)
     except cerebro.Stopped:
         raise Cancelled()
     except ia.IAError as exc:
@@ -876,7 +898,7 @@ def phase3(job_id):
             job["error"] = ""
         failures = []
         with step(job, "publisher", "Publicando en tus redes vinculadas..."):
-            nets = publicar.linked_networks()
+            nets = [n for n in publicar.linked_networks() if job.get("pub_nets") is None or n in job["pub_nets"]]
             if not nets:
                 raise StepError("Para subir videos debes iniciar sesion en una red. Hazlo en 'Cuentas'.")
             dest = PUBLISHED / job["id"]
@@ -940,6 +962,7 @@ def phase_split(job_id):
         VIDEOS.mkdir(exist_ok=True)
         sent = 0
         with step(job, "scout", "Cazador viral: analizando el audio de todo el video..."):
+            react = fetch_reactions(job, WORK / job["id"])
             db = cerebro.audio_db(ff, raw, on_proc=on_proc, stop=stop)
             blocks = [(a, min(a + SPLIT_EVERY, duration)) for a in range(0, int(duration), SPLIT_EVERY)]
             blocks = [b for b in blocks if b[1] - b[0] >= 15][:SPLIT_MAX]
@@ -947,7 +970,7 @@ def phase_split(job_id):
             for i, (a, b) in enumerate(blocks, 1):
                 if job.get("cancelled"):
                     raise Cancelled()
-                best = cerebro.pick_best(ff, raw, db, a, b, SCOUT_LENGTH, 2, base, on_proc, stop)
+                best = cerebro.pick_best(ff, raw, db, a, b, SCOUT_LENGTH, 2, base, on_proc, stop, react)
                 if not best or best["score"] < SCOUT_MIN_SCORE:
                     log(job, f"Bloque {i}/{len(blocks)}: sin momento destacado, lo salto.")
                     continue
@@ -1034,8 +1057,13 @@ def api_publish(body):
         job = get_job(body.get("id")) or next((j for j in jobs if j["status"] == "ready"), None)
     if not job or job["checkin"]["state"] != "green" or job["status"] not in ("ready", "published", "failed"):
         return 409, {"error": "No hay un clip aprobado por el Check-in. Procesa un video o espera la luz verde."}
-    if not publicar.linked_networks():
-        return 409, {"error": "Para subir videos debes iniciar sesion en una red. Hazlo en 'Cuentas'."}
+    nets = body.get("nets")
+    if nets is not None:
+        nets = [n for n in nets if n in publicar.linked_networks()] if isinstance(nets, list) else None
+    if not (publicar.linked_networks() if nets is None else nets):
+        return 409, {"error": "Elige al menos una red con sesion iniciada. Inicia sesion en 'Cuentas'."}
+    with lock:
+        job["pub_nets"] = nets
     tasks.put(("phase3", job["id"]))
     return 200, {"ok": True}
 
@@ -1165,7 +1193,9 @@ def live_pick(window, session):
     ff = find_tool("ffmpeg")
     db = cerebro.audio_db(ff, window)
     seconds = len(db) * cerebro.HOP
-    best = cerebro.pick_best(ff, window, db, 0, seconds, min(float(session.length), seconds), 2, session.title)
+    react = session.chat.curve(seconds) if session.chat else None
+    best = cerebro.pick_best(ff, window, db, 0, seconds, min(float(session.length), seconds), 2, session.title,
+                             react=react)
     if not best:
         return None
     VIDEOS.mkdir(exist_ok=True)
@@ -1238,6 +1268,33 @@ def api_brand_clear(body):
     return 200, {"ok": True}
 
 
+def api_radar_save(body):
+    try:
+        radar.save_settings(body)
+    except radar.RadarError as exc:
+        return 400, {"error": str(exc)}
+    return 200, {"ok": True}
+
+
+def api_radar_scan(body):
+    if not radar.scan_now():
+        return 409, {"error": "Ya hay una busqueda en marcha."}
+    return 200, {"ok": True}
+
+
+def api_radar_test(body):
+    try:
+        radar.send_test()
+    except radar.RadarError as exc:
+        return 400, {"error": str(exc)}
+    return 200, {"ok": True}
+
+
+def api_radar_clear(body):
+    radar.clear_found()
+    return 200, {"ok": True}
+
+
 def api_state():
     ai = cerebro.status()
     with lock:
@@ -1248,6 +1305,7 @@ def api_state():
             "jobs": [public_job(j) for j in jobs],
             "lives": [s.to_dict() for s in LIVES.values()],
             "brand": marca.public(),
+            "radar": radar.public(),
             "ai": ai,
         }
 
@@ -1255,7 +1313,8 @@ def api_state():
 # ---------- HTTP ----------
 OAUTH_PAGE = """<!doctype html><meta charset="utf-8"><title>Clip Agentes</title>
 <body style="font-family:system-ui;background:#0a0612;color:#f5eefd;display:grid;place-items:center;height:100vh;margin:0">
-<div style="text-align:center;max-width:460px"><h2>{title}</h2><p>{msg}</p><p>Ya puedes cerrar esta pestana.</p></div></body>"""
+<div style="text-align:center;max-width:460px"><h2>{title}</h2><p>{msg}</p><p>Ya puedes cerrar esta pestana.</p></div>
+{script}</body>"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1303,8 +1362,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "no encontrado"})
 
     def oauth_callback(self, net, query):
-        def page(title, msg):
-            html = OAUTH_PAGE.format(title=title, msg=msg).encode("utf-8")
+        def page(title, msg, ok=False):
+            back = "<script>setTimeout(()=>(window.close(),location.href='/'),2000)</script>" if ok else ""
+            html = OAUTH_PAGE.format(title=title, msg=msg, script=back).encode("utf-8")
             self.send_bytes(200, html, "text/html; charset=utf-8")
         if net not in publicar.NETWORKS:
             return page("Red desconocida", "")
@@ -1314,7 +1374,7 @@ class Handler(BaseHTTPRequestHandler):
             publicar.finish_oauth(net, (query.get("code") or [""])[0], (query.get("state") or [""])[0])
         except Exception as exc:
             return page("No se pudo vincular", str(exc).replace("<", "&lt;"))
-        page("Cuenta vinculada", f"{publicar.NETWORKS[net]['name']} quedo conectada.")
+        page("Cuenta vinculada", f"{publicar.NETWORKS[net]['name']} quedo conectada. Volviendo al panel...", ok=True)
 
     def serve_live(self, rest):
         sid, _, name = rest.partition("/")
@@ -1385,7 +1445,9 @@ class Handler(BaseHTTPRequestHandler):
                   "/api/live/start": api_live_start, "/api/live/clip": api_live_clip,
                   "/api/live/settings": api_live_settings, "/api/live/stop": api_live_stop,
                   "/api/live/remove": api_live_remove, "/api/brand/logo": api_brand_logo,
-                  "/api/brand/settings": api_brand_settings, "/api/brand/clear": api_brand_clear}
+                  "/api/brand/settings": api_brand_settings, "/api/brand/clear": api_brand_clear,
+                  "/api/radar/save": api_radar_save, "/api/radar/scan": api_radar_scan,
+                  "/api/radar/test": api_radar_test, "/api/radar/clear": api_radar_clear}
         handler = routes.get(urlparse(self.path).path)
         if not handler:
             return self.send_json(404, {"error": "no encontrado"})
@@ -1427,6 +1489,12 @@ def main():
     threading.Thread(target=lambda: cerebro.llm_json("Reply with JSON.", '{"ok": 1}', max_tokens=5),
                      daemon=True).start()
     threading.Thread(target=worker, daemon=True).start()
+    radar.configure(ytdlp_cmd(), find_tool("ffmpeg"))
+    if publicar.ACCOUNTS_FILE.is_file():
+        publicar._save(publicar._load())   # cifra los archivos guardados por versiones anteriores
+    if radar.FILE.is_file():
+        radar._save(radar._load())
+    radar.start()
     for name, ok in tools_status().items():
         print(f"{name}: {'OK' if ok else 'FALTA'}")
     print(f"codificador de video: {hw_encoder() or 'procesador (libx264)'}")

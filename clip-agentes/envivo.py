@@ -11,6 +11,8 @@ import threading
 import time
 from pathlib import Path
 
+import reaccion
+
 SEGMENT_SECONDS = 10
 BUFFER_SECONDS = 900
 MAX_CLIP_SECONDS = 58
@@ -53,6 +55,7 @@ class LiveSession:
         self.pick = None
         self.picking = False
         self.proc = None
+        self.chat = None
         self.lock = threading.RLock()
         self.stop_event = threading.Event()
         self._analyzed = 0
@@ -61,16 +64,20 @@ class LiveSession:
 
     # ---------- conexion ----------
     def start(self):
+        if "youtu" in self.url.lower():
+            self.chat = reaccion.LiveChat(self.url, self.ytdlp, self.dir)
+            self.chat.start()
         threading.Thread(target=self._run, daemon=True).start()
 
     def _resolve(self):
         low = self.url.lower()
         if ".m3u8" in low or low.startswith(("rtmp://", "rtmps://", "rtsp://")):
             self.title = "Directo"
-            return self.url, {}
+            return [self.url], {}
         if not self.ytdlp:
             raise LiveError("yt-dlp no esta instalado. Corre: pip install yt-dlp")
-        proc = subprocess.run([*self.ytdlp, "-j", "--no-playlist", "--no-warnings", "-f", "b[height<=1080]/b/best",
+        proc = subprocess.run([*self.ytdlp, "-j", "--no-playlist", "--no-warnings",
+                               "-f", "bv*[height<=1080]+ba/b[height<=1080]/b/best",
                                "--", self.url], capture_output=True, text=True, encoding="utf-8",
                               errors="replace", timeout=120)
         if proc.returncode != 0:
@@ -80,9 +87,11 @@ class LiveSession:
         if not info.get("is_live"):
             raise LiveError("Ese enlace no es un directo en vivo. Para un video normal usa 'Procesar'.")
         self.title = info.get("title") or "Directo"
-        if not info.get("url"):
+        # YouTube suele dar el video y el audio por separado: entonces son dos entradas para ffmpeg.
+        urls = [f["url"] for f in (info.get("requested_formats") or []) if f.get("url")][:2] or [info.get("url")]
+        if not urls[0]:
             raise LiveError("No encontre una URL de transmision para ese directo.")
-        return info["url"], info.get("http_headers") or {}
+        return urls, info.get("http_headers") or {}
 
     def _launch(self):
         stream, headers = self._resolve()
@@ -93,15 +102,18 @@ class LiveSession:
         self.dir.mkdir(parents=True, exist_ok=True)
         (self.dir / "hls").mkdir(exist_ok=True)
         args = [self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y"]
-        if headers:
-            args += ["-headers", "".join(f"{k}: {v}\r\n" for k, v in headers.items())]
-        if stream.lower().startswith("http"):
-            args += ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"]
-        args += ["-i", stream, "-map", "0:v:0?", "-map", "0:a:0?", "-c", "copy", "-t", str(MAX_RECORD_SECONDS),
+        for url in stream:
+            if headers:
+                args += ["-headers", "".join(f"{k}: {v}\r\n" for k, v in headers.items())]
+            if url.lower().startswith("http"):
+                args += ["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"]
+            args += ["-i", url]
+        vmap, amap = "0:v:0?", ("1:a:0?" if len(stream) > 1 else "0:a:0?")
+        args += ["-map", vmap, "-map", amap, "-c", "copy", "-t", str(MAX_RECORD_SECONDS),
                  "-f", "segment", "-segment_time", str(SEGMENT_SECONDS), "-segment_format", "mpegts",
                  "-reset_timestamps", "1", "-segment_list", f"lista{n}.csv", "-segment_list_type", "csv",
                  f"seg{n}_%06d.ts",
-                 "-map", "0:v:0?", "-map", "0:a:0?", "-c:v", "copy", "-c:a", "libmp3lame", "-b:a", "128k",
+                 "-map", vmap, "-map", amap, "-c:v", "copy", "-c:a", "libmp3lame", "-b:a", "128k",
                  "-ar", "44100", "-ac", "2", "-t", str(MAX_RECORD_SECONDS), "-f", "hls",
                  "-hls_time", "2", "-hls_list_size", "30",
                  "-hls_flags", "delete_segments+omit_endlist+independent_segments",
@@ -311,6 +323,8 @@ class LiveSession:
     # ---------- control ----------
     def stop(self):
         self.stop_event.set()
+        if self.chat:
+            self.chat.stop()
         proc = self.proc
         if proc and proc.poll() is None:
             try:

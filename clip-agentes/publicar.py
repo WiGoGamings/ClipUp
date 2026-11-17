@@ -11,6 +11,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import secreto
+
 BASE = Path(__file__).resolve().parent
 ACCOUNTS_FILE = BASE / "cuentas.json"
 GRAPH = "https://graph.facebook.com/v21.0"
@@ -20,6 +22,7 @@ NETWORKS = {
     "youtube": {
         "name": "YouTube Shorts",
         "pays": "Programa de socios de YouTube",
+        "dev": "https://console.cloud.google.com/apis/credentials",
         "oauth": True,
         "fields": [
             {"key": "client_id", "label": "Client ID", "secret": False},
@@ -32,6 +35,7 @@ NETWORKS = {
     "tiktok": {
         "name": "TikTok",
         "pays": "Creator Rewards Program",
+        "dev": "https://developers.tiktok.com/apps",
         "oauth": True,
         "fields": [
             {"key": "client_key", "label": "Client key", "secret": False},
@@ -44,6 +48,7 @@ NETWORKS = {
     "instagram": {
         "name": "Instagram Reels",
         "pays": "Bonos de Meta (segun elegibilidad)",
+        "dev": "https://developers.facebook.com/apps",
         "oauth": True,
         "login": "Facebook",
         "fields": [
@@ -58,6 +63,7 @@ NETWORKS = {
     "facebook": {
         "name": "Facebook Reels",
         "pays": "Monetizacion de contenido de Facebook",
+        "dev": "https://developers.facebook.com/apps",
         "oauth": True,
         "login": "Facebook",
         "fields": [
@@ -89,13 +95,13 @@ def redirect_uri(net):
 # ---------- almacenamiento ----------
 def _load():
     try:
-        return json.loads(ACCOUNTS_FILE.read_text(encoding="utf-8"))
+        return json.loads(secreto.unprotect(ACCOUNTS_FILE.read_text(encoding="utf-8").strip()))
     except (OSError, ValueError):
         return {}
 
 
 def _save(data):
-    ACCOUNTS_FILE.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    ACCOUNTS_FILE.write_text(secreto.protect(json.dumps(data, indent=1)), encoding="utf-8")
 
 
 def is_linked(net):
@@ -114,7 +120,7 @@ def summary():
         acc = data.get(net, {})
         out.append({
             "net": net, "name": meta["name"], "pays": meta["pays"], "oauth": meta["oauth"],
-            "login": meta.get("login", meta["name"].split()[0]),
+            "login": meta.get("login", meta["name"].split()[0]), "dev_url": meta["dev"],
             "help": meta["help"].format(redirect=redirect_uri(net)),
             "linked": bool(acc.get("linked")), "label": acc.get("label", ""),
             "ready": all(bool(_app_value(net, f["key"])) for f in meta["fields"]),

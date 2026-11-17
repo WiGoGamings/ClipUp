@@ -1,4 +1,5 @@
 yt-dlp
 faster-whisper
+numpy
 edge-tts
 deep-translator

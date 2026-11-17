@@ -232,8 +232,9 @@ def llm_rate(text, lang, source_title):
 
 
 # ---------- evaluar un momento ----------
-def evaluate(ffmpeg, path, cand, source_title="", with_visual=True, on_proc=None, stop=None):
-    """Transcribe y puntua un momento {start, end}. Devuelve el momento con su puntaje viral y su gancho."""
+def evaluate(ffmpeg, path, cand, source_title="", with_visual=True, on_proc=None, stop=None, react=None):
+    """Transcribe y puntua un momento {start, end}. Devuelve el momento con su puntaje viral y su gancho.
+    Si hay reacciones de la audiencia (react), pesan mas que todo lo demas: ese es el momento que la gente vivio."""
     start, end = float(cand["start"]), float(cand["end"])
     length = end - start
     try:
@@ -247,24 +248,37 @@ def evaluate(ffmpeg, path, cand, source_title="", with_visual=True, on_proc=None
     visual = visual_score(ffmpeg, path, start, length, on_proc) if with_visual else 0.0
     txt = text_score(text, length, lang or "es") if segs else 0.0
     rated = llm_rate(text, lang or "es", source_title) if segs and llm_model() else None
-    if rated:
+    reaction = react.score(start, end) if react else None
+    if reaction is not None:
+        if rated:
+            score = 0.40 * reaction + 0.15 * audio + 0.10 * visual + 0.05 * txt + 0.30 * rated["score"]
+        elif segs:
+            score = 0.45 * reaction + 0.20 * audio + 0.10 * visual + 0.25 * txt
+        else:
+            score = 0.55 * reaction + 0.25 * audio + 0.20 * visual
+    elif rated:
         score = 0.30 * audio + 0.15 * visual + 0.10 * txt + 0.45 * rated["score"]
     elif segs:
         score = 0.45 * audio + 0.25 * visual + 0.30 * txt
     else:
         score = 0.60 * audio + 0.40 * visual
     new_start, new_end = start, end
-    if segs:
+    if segs and reaction is None:
         s0, s1 = segs[0]["start"], segs[-1]["end"]
         if s1 - s0 >= 18:
             new_start = start + max(0.0, s0 - 0.4)
             new_end = min(end, start + s1 + 0.6)
     hook = (rated or {}).get("hook") or ""
+    reason = (rated or {}).get("reason") or _basic_reason(audio, visual, txt, bool(segs))
+    detail = react.detail(start, end) if react else ""
+    if detail and reaction >= 25:
+        reason = detail + ". " + reason
     return {"start": round(new_start, 2), "end": round(new_end, 2), "score": int(round(score)),
-            "hook": hook, "reason": (rated or {}).get("reason") or _basic_reason(audio, visual, txt, bool(segs)),
+            "hook": hook, "reason": reason,
             "lang": lang, "text": text[:600],
             "signals": {"audio": int(audio), "visual": int(visual), "text": int(txt),
-                        "ai": rated["score"] if rated else None},
+                        "ai": rated["score"] if rated else None,
+                        "reaction": int(reaction) if reaction is not None else None},
             "model": llm_model() if rated else ""}
 
 
@@ -281,14 +295,19 @@ def _basic_reason(audio, visual, txt, speech):
     return ("Analisis basico: " + ", ".join(bits)) if bits else "Analisis basico: momento sin picos claros."
 
 
-def pick_best(ffmpeg, path, db, a, b, length=45, tries=2, source_title="", on_proc=None, stop=None):
-    """El mejor momento entre a y b: preselecciona por sonido, luego evalua los finalistas."""
+def pick_best(ffmpeg, path, db, a, b, length=45, tries=2, source_title="", on_proc=None, stop=None, react=None):
+    """El mejor momento entre a y b: preselecciona por reaccion de la audiencia y por sonido, luego evalua."""
     cands = window_candidates(db, a, b, length, tries)
+    if react:
+        for cand in react.windows(a, b, length, tries):
+            audio = window_candidates(db, cand["start"], cand["end"], length, 1)
+            cand["audio"] = audio[0]["audio"] if audio else 50.0
+            cands.append(cand)
     if not cands:
         return None
     best = None
     for cand in cands:
-        result = evaluate(ffmpeg, path, cand, source_title, on_proc=on_proc, stop=stop)
+        result = evaluate(ffmpeg, path, cand, source_title, on_proc=on_proc, stop=stop, react=react)
         if best is None or result["score"] > best["score"]:
             best = result
     return best

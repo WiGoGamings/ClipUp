@@ -82,8 +82,36 @@ h1 span{color:var(--muted);font-weight:400}
 .nt.unread b{color:#fff}
 .nt p{white-space:pre-wrap;word-break:break-word;line-height:1.4}
 .nt small{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
+.nt a{color:var(--cyan);font-size:.8rem}
 .notif pre{font:.76rem/1.5 ui-monospace,Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-word;padding:10px 0}
 .empty{color:var(--muted);font-size:.86rem;padding:18px 0;text-align:center}
+
+/* portada y flujo (inspirado en Subiclip) */
+.hero{text-align:center;padding:8px 0 22px}
+.hero-t{font-family:"Anton",Impact,sans-serif;font-weight:400;font-size:clamp(2rem,5.5vw,3.4rem);line-height:1.05;letter-spacing:.01em;text-shadow:0 0 28px rgba(255,46,136,.35)}
+.hero-t span{background:linear-gradient(90deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+.hero p{max-width:560px;margin:10px auto 0;color:var(--muted);line-height:1.5}
+.steps{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:860px;margin:22px auto 0;text-align:left}
+.step{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:rgba(21,15,34,.7);transition:border-color .3s,background .3s}
+.step b{grid-row:span 2;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:2px solid var(--line);color:var(--muted)}
+.step h3{font-size:.95rem}
+.step small{color:var(--muted);font-size:.78rem}
+.step.now{border-color:var(--pink);background:rgba(255,46,136,.1)}
+.step.now b{border-color:var(--pink);color:#fff;background:var(--pink)}
+.step.done{border-color:var(--ok)}
+.step.done b{border-color:var(--ok);color:var(--ok)}
+.nets{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:22px}
+.nets .lbl{font-size:.8rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+.netchip{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-weight:600;font-size:.86rem}
+.netchip i{width:9px;height:9px;border-radius:50%;background:#3a2d58}
+.netchip.on{border-color:var(--cyan);color:var(--text)}
+.netchip.on i{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.netchip.off{border-style:dashed}
+.netrow{padding:12px 0;border-top:1px solid var(--line)}
+.netrow:first-of-type{border-top:0}
+.netrow h3{font-size:.95rem;margin-bottom:6px}
+.netrow .pub{padding:6px 0;border-top:0}
+@media (max-width:620px){.steps{grid-template-columns:1fr}}
 
 /* reloj */
 .clock-card{padding:10px 10px 16px;margin-bottom:18px}
@@ -241,6 +269,22 @@ h1 span{color:var(--muted);font-weight:400}
 .mkcol .tags{color:var(--pink)}
 .copy{justify-self:start}
 .brand{width:min(720px,100%)}
+.radar{width:min(900px,100%);display:grid;gap:14px}
+.radar h3{font-size:.95rem;color:var(--cyan)}
+.rdgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.radar label:not(.switch){display:grid;gap:5px;font-size:.84rem;color:var(--muted)}
+.radar input[type=text],.radar input[type=number],.radar input[type=password],.radar input[type=email],.radar textarea{background:var(--bg);border:1px solid var(--line);color:var(--text);padding:8px 12px;border-radius:10px;font:inherit;width:100%}
+.radar textarea{resize:vertical}
+.radar .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rdstat{font-size:.84rem;color:var(--muted)}
+.rdh{font-size:1rem;display:flex;justify-content:space-between;align-items:center}
+.rdstat.err{color:var(--bad)}
+.rdlist{max-height:300px;overflow:auto}
+.rd{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;padding:10px 0;border-top:1px solid var(--line);font-size:.86rem}
+.rd:first-child{border-top:0}
+.rd a{color:var(--cyan);word-break:break-word}
+.rd small{color:var(--muted);grid-column:2}
+.rd small.bad{color:var(--bad)}
 .brandgrid{display:grid;grid-template-columns:200px 1fr;gap:20px;margin-top:16px;align-items:start}
 .logobox{width:200px;height:200px;border-radius:16px;border:1px dashed var(--line);display:grid;place-items:center;margin-bottom:10px;background:repeating-conic-gradient(#1b1330 0% 25%,#120b22 0% 50%) 50%/20px 20px;overflow:hidden}
 .logobox img{max-width:90%;max-height:90%}
@@ -283,6 +327,7 @@ h1 span{color:var(--muted);font-weight:400}
     <div class="actions">
       <button class="btn livebtn" id="btnLiveOpen" aria-label="Abrir panel en vivo"><span class="rec" id="liveDot"></span>EN VIVO</button>
       <button class="btn" id="btnBrand">Mi logo</button>
+      <button class="btn" id="btnRadar">Radar</button>
       <button class="btn" id="btnAccounts">Cuentas</button>
       <div class="bellwrap">
         <button class="btn bell" id="btnBell" aria-label="Notificaciones" aria-expanded="false">
@@ -302,6 +347,12 @@ h1 span{color:var(--muted);font-weight:400}
     </div>
   </div>
 
+  <header class="hero">
+    <h2 class="hero-t">Un clip. <span>Todas tus redes.</span></h2>
+    <p>Sube tu video una sola vez: los agentes lo editan en español e inglés y lo publican en cada red que elijas.</p>
+    <ol class="steps" id="steps" aria-label="Tres pasos"></ol>
+  </header>
+
   <div class="bar">
     <input class="url" id="url" placeholder="Pega el enlace de TU video" aria-label="Enlace del video" autocomplete="off">
     <button class="btn primary" id="btnProcess">Procesar</button>
@@ -312,6 +363,8 @@ h1 span{color:var(--muted);font-weight:400}
       <label><input type="checkbox" class="optAuto" checked> Publicar automáticamente con luz verde</label>
     </div>
   </div>
+
+  <div class="nets" id="netPick" role="group" aria-label="Redes donde publicar"></div>
 
   <div class="grid">
     <main>
@@ -335,7 +388,7 @@ h1 span{color:var(--muted);font-weight:400}
       <section class="card viral hidden" id="viralCard" aria-label="Cazador viral y marketing"></section>
 
       <section class="card queue hidden" id="pubBox" aria-label="Publicaciones">
-        <h2>Publicaciones</h2>
+        <h2>Estado por red</h2>
         <div id="pubs"></div>
       </section>
 
@@ -409,6 +462,43 @@ h1 span{color:var(--muted);font-weight:400}
   </div>
 </div>
 
+<div class="modal hidden" id="radarModal" role="dialog" aria-modal="true" aria-label="Radar viral">
+  <div class="card sheet radar">
+    <h2>Radar viral</h2>
+    <p class="muted">Busca en YouTube videos y directos con muchas vistas, likes o personas viendo. Cuando encuentra uno te avisa aquí en la campana de notificaciones, con el enlace, y si no tienes ninguna sesión iniciada baja el video a la carpeta <b>videos/virales</b>. El correo es opcional.</p>
+    <label class="switch"><input type="checkbox" id="rdOn"><span class="trk"></span><span>Radar encendido</span></label>
+    <div class="rdgrid">
+      <label>Mínimo de vistas, likes o personas viendo<input type="number" id="rdTh" min="1"></label>
+      <label>Revisar cada (minutos)<input type="number" id="rdIv" min="5" max="720"></label>
+      <label>Palabras para buscar videos virales (una por línea)<textarea id="rdQ" rows="3"></textarea></label>
+      <label>Palabras para buscar directos (una por línea)<textarea id="rdLQ" rows="3"></textarea></label>
+    </div>
+    <label>Enlaces a vigilar: canal, directo o video (uno por línea, opcional)<textarea id="rdW" rows="2" placeholder="https://www.youtube.com/@canal/streams"></textarea></label>
+    <div class="row">
+      <label class="switch"><input type="checkbox" id="rdDl"><span class="trk"></span><span>Bajar solo si no hay sesión iniciada</span></label>
+      <label>No bajar videos de más de (min)<input type="number" id="rdMax" min="1" max="600"></label>
+    </div>
+    <h3>Aviso por correo (opcional)</h3>
+    <div class="rdgrid">
+      <label>Enviar avisos a<input type="email" id="rdTo" autocomplete="off" placeholder="tucorreo@gmail.com"></label>
+      <label>Servidor SMTP<input type="text" id="rdHost" autocomplete="off"></label>
+      <label>Puerto<input type="number" id="rdPort" min="1" max="65535"></label>
+      <label>Usuario (tu correo)<input type="text" id="rdUser" autocomplete="off"></label>
+      <label>Clave de aplicación<input type="password" id="rdPass" autocomplete="new-password"></label>
+    </div>
+    <p class="muted">Con Gmail: servidor smtp.gmail.com, puerto 587 y una <b>contraseña de aplicación</b> (la creas en tu cuenta de Google con la verificación en dos pasos activada), no tu clave normal.</p>
+    <div class="row">
+      <button class="btn primary" id="rdSave">Guardar</button>
+      <button class="btn" id="rdTest">Enviar correo de prueba</button>
+      <button class="btn" id="rdScan">Buscar ahora</button>
+      <button class="btn" id="rdClose">Cerrar</button>
+    </div>
+    <div class="rdstat" id="rdStat" aria-live="polite"></div>
+    <h2 class="rdh">Detectados <button class="btn small" id="rdClear">Vaciar lista</button></h2>
+    <div class="rdlist" id="rdList"></div>
+  </div>
+</div>
+
 <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-label="Cuentas">
   <div class="card sheet">
     <h2>Cuentas de redes sociales</h2>
@@ -440,9 +530,9 @@ try{ notes = JSON.parse(localStorage.getItem('notes') || '[]'); }catch(e){ notes
 const seenKeys = new Set();
 let noteTab = 'avisos';
 
-function notify(level, msg, key){
+function notify(level, msg, key, url){
   if(key){ if(seenKeys.has(key)) return; seenKeys.add(key); }
-  notes.unshift({t:Date.now(), lv:level, msg:String(msg), read:false});
+  notes.unshift({t:Date.now(), lv:level, msg:String(msg), read:false, url:/^https?:\/\//.test(url||'') ? url : ''});
   notes = notes.slice(0, 80);
   saveNotes(); paintBell(true);
   if(!$('notif').classList.contains('hidden')) paintNotif();
@@ -460,7 +550,7 @@ function paintNotif(){
   document.querySelectorAll('[data-nt]').forEach(t=>t.classList.toggle('on', t.dataset.nt===noteTab));
   $('btnClearN').classList.toggle('hidden', noteTab!=='avisos');
   if(noteTab==='avisos'){
-    $('notifBody').innerHTML = notes.length ? notes.map(n=>`<div class="nt ${n.lv} ${n.read?'':'unread'}"><i></i><p><b>${esc(n.msg)}</b><small>${new Date(n.t).toLocaleTimeString()}</small></p></div>`).join('')
+    $('notifBody').innerHTML = notes.length ? notes.map(n=>`<div class="nt ${n.lv} ${n.read?'':'unread'}"><i></i><p><b>${esc(n.msg)}</b>${n.url ? `<br><a href="${esc(n.url)}" target="_blank" rel="noopener">Abrir el enlace</a>` : ''}<small>${new Date(n.t).toLocaleString()}</small></p></div>`).join('')
       : '<div class="empty">Sin avisos. Aquí verás errores y mensajes.</div>';
   }else{
     const job = current();
@@ -658,7 +748,7 @@ function renderViral(job){
     html += `<div class="vtop"><div class="vscore" style="--p:${v.score};--c:${scoreColor(v.score)}"><span>${v.score}</span></div>
       <div><h2>Cazador viral <small style="color:var(--muted);font-weight:400">puntaje de 0 a 100 · ${fmt(v.start)}–${fmt(v.end)} del video${v.model ? ' · IA '+esc(v.model.replace(':latest','')) : ' · análisis básico'}</small></h2>
         <div class="vhook">${esc(v.hook || 'Sin gancho propuesto')}</div><div class="vreason">${esc(v.reason)}</div>
-        <div class="sig"><b>Audio ${sig.audio ?? '–'}</b><b>Imagen ${sig.visual ?? '–'}</b><b>Texto ${sig.text ?? '–'}</b>${sig.ai!=null ? `<b>IA ${sig.ai}</b>` : ''}</div></div></div>`;
+        <div class="sig"><b>Audio ${sig.audio ?? '–'}</b><b>Imagen ${sig.visual ?? '–'}</b><b>Texto ${sig.text ?? '–'}</b>${sig.ai!=null ? `<b>IA ${sig.ai}</b>` : ''}${sig.reaction!=null ? `<b>Reacción ${sig.reaction}</b>` : ''}</div></div></div>`;
   }
   if(vers.length && vers.some(([,x])=>x.kit)){
     html += '<div class="mk">' + vers.map(([c,x])=>{
@@ -704,6 +794,37 @@ $('btnSaveBrand').onclick = async ()=>{
   }
 };
 
+/* ---------- redes y pasos ---------- */
+let selectedNets = null;   // null = todas las vinculadas
+try{ const s = JSON.parse(localStorage.getItem('pubnets') || 'null'); if(Array.isArray(s)) selectedNets = s; }catch(e){}
+const pickedNets = () => state.accounts.filter(a=>a.linked && (selectedNets===null || selectedNets.includes(a.net))).map(a=>a.net);
+function renderNets(){
+  $('netPick').innerHTML = '<span class="lbl">Publicar en</span>' + state.accounts.map(a=>{
+    const on = pickedNets().includes(a.net);
+    return `<button class="netchip ${on?'on':''} ${a.linked?'':'off'}" data-net="${esc(a.net)}" aria-pressed="${on}" title="${a.linked?'':'Sin sesión: toca para iniciar sesión'}"><i></i>${esc(a.name)}</button>`;
+  }).join('');
+  $('netPick').querySelectorAll('.netchip').forEach(b=>b.onclick=()=>{
+    const a = state.accounts.find(x=>x.net===b.dataset.net);
+    if(!a.linked){ renderAccounts(); $('modal').classList.remove('hidden'); return; }
+    const cur = pickedNets();
+    selectedNets = cur.includes(a.net) ? cur.filter(n=>n!==a.net) : [...cur, a.net];
+    localStorage.setItem('pubnets', JSON.stringify(selectedNets));
+    render();
+  });
+}
+function renderSteps(){
+  const linked = state.accounts.filter(a=>a.linked).length;
+  const made = state.jobs.some(j=>['ready','published'].includes(j.status)), busy = state.jobs.some(j=>j.status==='processing');
+  const sent = state.jobs.some(j=>j.publish.some(r=>r.ok));
+  const defs = [
+    ['Conecta tus cuentas', linked ? `${linked} de ${state.accounts.length} conectadas` : 'Botón «Cuentas»', linked>0],
+    ['Sube tu video', busy ? 'Los agentes están trabajando…' : (made ? 'Clip listo' : 'Pega el enlace y pulsa Procesar'), made],
+    ['Publica', sent ? 'Ya se publicó' : 'Con luz verde sale a las redes elegidas', sent],
+  ];
+  const now = defs.findIndex(d=>!d[2]);
+  $('steps').innerHTML = defs.map((d,i)=>`<li class="step ${d[2]?'done':(i===now?'now':'')}"><b>${d[2]?'✓':i+1}</b><h3>${d[0]}</h3><small>${esc(d[1])}</small></li>`).join('');
+}
+
 /* ---------- render principal ---------- */
 function render(){
   const job = current();
@@ -730,14 +851,26 @@ function render(){
 
   paint('viral', job && [job.viral, job.status, Object.entries(job.versions).map(([c,v])=>[c,v.post_title,v.description,v.hashtags,v.kit])], ()=>renderViral(job));
 
-  paint('pubs', job && job.publish, ()=>{
+  paint('pubs', [job && job.publish, selectedNets, state.accounts.map(a=>a.linked)], ()=>{
     const list = job && job.publish ? job.publish : [];
     $('pubBox').classList.toggle('hidden', !list.length);
     const names = Object.fromEntries(state.accounts.map(a=>[a.net, a.name]));
-    $('pubs').innerHTML = list.map(r=>`<div class="pub"><span>${esc(names[r.net]||r.net)} · ${r.lang==='es'?'Español':'English'}</span>
-      <span class="badge ${r.ok?'s-done':'s-failed'}">${r.ok?'Publicado':'Falló'}</span>
-      ${r.ok ? `<span style="grid-column:1/-1">${/^https?:/.test(r.url) ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>` : esc(r.url)}</span>` : `<span class="e">${esc(r.error)}</span>`}</div>`).join('');
+    const wanted = new Set([...list.map(r=>r.net), ...pickedNets()]);
+    $('pubs').innerHTML = state.accounts.filter(a=>wanted.has(a.net)).map(a=>{
+      const rows = ['es','en'].map(lang=>{
+        const r = list.find(x=>x.net===a.net && x.lang===lang), lg = lang==='es'?'Español':'English';
+        if(!r) return `<div class="pub"><span>${lg}</span><span class="badge s-pending">Pendiente</span></div>`;
+        if(!r.ok) return `<div class="pub"><span>${lg}</span><span class="badge s-failed">Error</span><span class="e">${esc(r.error)}</span></div>`;
+        const link = /^https?:/.test(r.url);
+        return `<div class="pub"><span>${lg}</span><span class="badge ${link?'s-done':'s-ready'}">${link?'Publicado':'En revisión'}</span>
+          <span style="grid-column:1/-1">${link ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>` : esc(r.url)}</span></div>`;
+      }).join('');
+      return `<div class="netrow"><h3>${esc(names[a.net]||a.net)}</h3>${rows}</div>`;
+    }).join('');
   });
+
+  paint('nets', [state.accounts.map(a=>[a.net,a.name,a.linked]), selectedNets], renderNets);
+  paint('steps', [state.accounts.map(a=>a.linked), state.jobs.map(j=>[j.status, j.publish.some(r=>r.ok)])], renderSteps);
 
   paint('queue', [state.jobs.map(j=>[j.id,j.title,j.duration,j.status]), job && job.id], ()=>{
     $('queue').innerHTML = queueHTML(state.jobs, job && job.id);
@@ -759,6 +892,7 @@ function render(){
     chip.textContent = state.ai.ok ? `IA local: ${state.ai.model.replace(':latest','')}` : 'IA apagada · análisis básico';
     if(!state.ai.ok) notify('warn', 'Ollama no responde: los clips se eligen con análisis básico de audio e imagen y el marketing usa plantillas. Enciende Ollama para usar la IA.', 'ai-off');
   });
+  paint('radar', state.radar, renderRadar);
   paint('brandbtn', state.brand, ()=>{ $('btnBrand').textContent = state.brand.has_logo ? 'Mi logo ✓' : 'Mi logo'; if($('brandModal').classList.contains('hidden')===false) renderBrand(); });
   if(!$('notif').classList.contains('hidden') && noteTab==='log') paintNotif();
 }
@@ -903,10 +1037,11 @@ function renderAccounts(){
           ? `<div class="st">Subirás videos como <b style="color:var(--text)">${esc(a.label)}</b>.</div>
              <div class="row"><button class="btn small" data-act="connect">Volver a iniciar sesión</button><button class="btn no small" data-act="unlink">Cerrar sesión</button></div>`
           : `<button class="btn primary big" data-act="connect">Iniciar sesión con ${esc(a.login)}</button>
-             <div class="st">${a.ready ? 'Se abrirá la página oficial para que inicies sesión y autorices. No copias ninguna llave.' : 'Primero completa el registro único de abajo (solo la primera vez).'}</div>`}
+             <div class="st">${a.ready ? 'Se abrirá la página oficial para que inicies sesión y autorices. No copias ninguna llave.' : 'Primera vez: este botón te lleva a la página oficial para crear la app (2 datos que pegas abajo). Después, el mismo botón te lleva directo a iniciar sesión.'}</div>`}
       </div>
       <details class="setup" ${a.ready || a.linked ? '' : 'open'}><summary>Registro único de la app (solo la primera vez)</summary>
         <p>${esc(a.help)}</p>
+        <p><a href="${esc(a.dev_url)}" target="_blank" rel="noopener">Abrir la página oficial para crear la app</a></p>
         ${a.fields.map(f=>`<label>${esc(f.label)}
           <input data-key="${esc(f.key)}" type="${f.secret?'password':'text'}" value="${esc(f.value)}" autocomplete="off"
             placeholder="${f.saved && f.secret ? '•••• guardado (vacío = conservar)' : ''}"></label>`).join('')}
@@ -917,14 +1052,87 @@ function renderAccounts(){
     const fields = {};
     card.querySelectorAll('input').forEach(i=>fields[i.dataset.key]=i.value);
     if(act==='unlink'){ if(await api('/api/accounts/unlink',{net})){ notify('ok','Sesión cerrada'); refresh(); } return; }
+    const acc = state.accounts.find(x=>x.net===net);
+    const inputs = [...card.querySelectorAll('input')];
+    const empty = inputs.filter(i=>!i.value.trim() && !i.placeholder);
+    if(empty.length === inputs.length){
+      // Primera vez: sin los datos de la app no hay inicio de sesión; se va directo a la página oficial donde se obtienen.
+      notify('info', `Primera vez en ${acc.name}: crea la app en la página oficial, copia los 2 datos en esta tarjeta y pulsa de nuevo.`);
+      location.href = acc.dev_url;
+      return;
+    }
     const r = await api('/api/accounts/connect',{net,fields});
-    if(r){ window.open(r.url, '_blank', 'noopener'); notify('info','Inicia sesión y autoriza en la pestaña que se abrió. Al terminar vuelve aquí.'); refresh(); }
+    if(r){ location.href = r.url; }   // directo a la página oficial de inicio de sesión; al terminar vuelve aquí solo
     else card.querySelector('details.setup').open = true;
   });
 }
 
+/* ---------- radar viral ---------- */
+const nf = n => n>=1e6 ? (n/1e6).toFixed(1)+' M' : (n>=1e3 ? Math.round(n/1e3)+' mil' : String(n));
+const RD_WHAT = {live:'viendo en vivo', likes:'likes', views:'vistas'};
+let radarKnown = null, lastLinked = null;
+function fillRadar(){
+  const r = state.radar, e = r.email;
+  $('rdOn').checked = r.enabled; $('rdTh').value = r.threshold; $('rdIv').value = r.interval;
+  $('rdQ').value = r.queries.join('\n'); $('rdLQ').value = r.live_queries.join('\n'); $('rdW').value = r.watch.join('\n');
+  $('rdDl').checked = r.auto_download; $('rdMax').value = r.max_minutes;
+  $('rdTo').value = e.to; $('rdHost').value = e.host; $('rdPort').value = e.port; $('rdUser').value = e.user;
+  $('rdPass').value = ''; $('rdPass').placeholder = e.has_password ? '•••• guardada (vacío = conservar)' : '';
+}
+function radarBody(){
+  return {enabled:$('rdOn').checked, threshold:$('rdTh').value, interval:$('rdIv').value, queries:$('rdQ').value, live_queries:$('rdLQ').value,
+    watch:$('rdW').value, auto_download:$('rdDl').checked, max_minutes:$('rdMax').value,
+    email:{to:$('rdTo').value, host:$('rdHost').value, port:$('rdPort').value, user:$('rdUser').value, password:$('rdPass').value}};
+}
+function renderRadar(){
+  const r = state.radar, s = r.status;
+  $('btnRadar').textContent = r.enabled ? 'Radar ● ON' : 'Radar';
+  const stat = $('rdStat');
+  stat.classList.toggle('err', !!s.error);
+  stat.textContent = s.running ? 'Buscando videos y directos virales…'
+    : s.error ? 'Error en la última búsqueda: ' + s.error
+    : s.last ? `Última búsqueda a las ${new Date(s.last*1000).toLocaleTimeString()} · ${s.new} nuevos` + (s.next_in!==null ? ` · próxima en ${Math.ceil(s.next_in/60)} min` : '')
+    : (r.enabled ? 'Esperando la primera búsqueda…' : 'Apagado. Enciéndelo y guarda, o pulsa «Buscar ahora».');
+  $('rdList').innerHTML = r.found.length ? r.found.map(f=>{
+    const link = /^https?:\/\//.test(f.url);
+    const bad = s => /^error/.test(s);
+    return `<div class="rd"><span class="badge ${f.kind==='live'?'s-working':'s-ready'}">${f.kind==='live'?'Directo':'Video'}</span>
+      <span>${link ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.title)}</a>` : esc(f.title)}</span>
+      <small><b>${nf(f.value)}</b> ${RD_WHAT[f.metric]}${f.channel ? ' · ' + esc(f.channel) : ''} · ${new Date(f.ts*1000).toLocaleString()}</small>
+      <small class="${bad(f.emailed)?'bad':''}">${f.emailed ? 'Correo: ' + esc(f.emailed) : ''}</small>
+      ${f.download ? `<small class="${bad(f.download)?'bad':''}">Descarga: ${esc(f.download)}</small>` : ''}</div>`;
+  }).join('') : '<div class="empty">Todavía no se ha detectado nada.</div>';
+}
+async function saveRadar(){ return await api('/api/radar/save', radarBody()); }
+$('btnRadar').onclick = ()=>{ fillRadar(); renderRadar(); $('radarModal').classList.remove('hidden'); };
+$('rdClose').onclick = ()=>$('radarModal').classList.add('hidden');
+$('radarModal').addEventListener('click', e=>{ if(e.target===$('radarModal')) $('radarModal').classList.add('hidden'); });
+$('rdSave').onclick = async ()=>{ if(await saveRadar()){ notify('ok', 'Radar guardado.'); await refresh(); fillRadar(); } };
+$('rdTest').onclick = async ()=>{
+  if(!(await saveRadar())) return;
+  $('rdTest').disabled = true;
+  if(await api('/api/radar/test', {})) notify('ok', 'Correo de prueba enviado. Revisa tu bandeja (y spam).');
+  $('rdTest').disabled = false; refresh();
+};
+$('rdScan').onclick = async ()=>{ if(await saveRadar() && await api('/api/radar/scan', {})) refresh(); };
+$('rdClear').onclick = async ()=>{ if(await api('/api/radar/clear', {})) refresh(); };
+
 /* ---------- avisos automáticos ---------- */
 function watch(){
+  const linked = state.accounts.filter(a=>a.linked).map(a=>a.net);
+  if(lastLinked){
+    for(const net of linked.filter(n=>!lastLinked.includes(n))) notify('ok', `Sesión iniciada en ${state.accounts.find(a=>a.net===net).name}. Ya puedes publicar ahí.`, `link:${net}:${Date.now()}`);
+  }
+  lastLinked = linked;
+  const rd = state.radar.found;
+  // Lo detectado mientras el panel estaba cerrado también avisa en la campana (se recuerda lo ya avisado).
+  const doneTs = Number(localStorage.getItem('radarTs') || 0);
+  for(const f of [...rd].reverse().filter(f=>f.ts>doneTs)){
+    const live = f.kind==='live';
+    notify('ok', `${live ? 'Directo' : 'Video'} viral: ${f.title} · ${nf(f.value)} ${RD_WHAT[f.metric]}`, `rd:${f.id}`, f.url);
+  }
+  if(rd.length) localStorage.setItem('radarTs', String(Math.max(doneTs, ...rd.map(f=>f.ts))));
+  radarKnown = true;
   for(const j of state.jobs){
     const prev = lastStatus[j.id], name = j.title;
     if(prev && prev!==j.status){
@@ -985,7 +1193,7 @@ $('btnProcess').onclick = async ()=>{
 $('url').addEventListener('keydown', e=>{ if(e.key==='Enter') $('btnProcess').click(); });
 $('btnPublish').onclick = async ()=>{
   const job = current();
-  if(await api('/api/publish', {id: job ? job.id : undefined})) refresh();
+  if(await api('/api/publish', {id: job ? job.id : undefined, nets: pickedNets()})) refresh();
 };
 $('btnClean').onclick = async ()=>{
   for(const j of state.jobs.filter(j=>j.status!=='processing')) await api('/api/remove', {id:j.id});
@@ -996,7 +1204,7 @@ $('btnCloseModal').onclick = ()=>$('modal').classList.add('hidden');
 $('modal').addEventListener('click', e=>{ if(e.target===$('modal')) $('modal').classList.add('hidden'); });
 document.addEventListener('keydown', e=>{
   if(e.key!=='Escape') return;
-  $('modal').classList.add('hidden'); $('brandModal').classList.add('hidden'); toggleNotif(false);
+  $('modal').classList.add('hidden'); $('brandModal').classList.add('hidden'); $('radarModal').classList.add('hidden'); toggleNotif(false);
   if(!$('livePanel').classList.contains('hidden')) closeLive();
 });
 
