@@ -65,28 +65,50 @@ def main():
     import rutas
     if rutas.FROZEN:
         hide_child_consoles()
+        log = rutas.DATA / "registro.txt"
+        if log.is_file() and log.stat().st_size > 2_000_000:
+            log.unlink()
+        sys.stdout = sys.stderr = open(log, "a", buffering=1, encoding="utf-8")   # sin consola: los errores quedan aqui
     import publicar
     import server
 
     url = f"http://127.0.0.1:{publicar.PORT}"
     ensure_ollama()
-    if not serving(url):
+    already_running = serving(url)
+    if not already_running:
         threading.Thread(target=server.main, daemon=True).start()
-        for _ in range(100):
+        for _ in range(300):   # hasta 60 s: en un primer arranque Windows revisa los archivos nuevos
             if serving(url):
                 break
             time.sleep(0.2)
+        else:
+            raise RuntimeError("El servidor no arranco en 60 segundos.")
     browser = find_browser()
-    if not browser:
+    if browser:
+        # No se espera a este proceso: si Edge ya estaba abierto con ese perfil, el nuevo proceso termina al
+        # instante y se cerraria el programa. Al cerrar la ventana el panel avisa solo (ver /api/bye).
+        subprocess.Popen([browser, f"--app={url}", f"--user-data-dir={rutas.DATA / 'ventana'}", "--no-first-run",
+                          "--window-size=1320,900"])
+    else:
         webbrowser.open(url)
-        threading.Event().wait()   # sin Edge ni Chrome no hay ventana propia: queda abierto en el navegador
-        return
-    profile = rutas.DATA / "ventana"
-    window = subprocess.Popen([browser, f"--app={url}", f"--user-data-dir={profile}", "--no-first-run",
-                               "--window-size=1320,900"])
-    window.wait()   # al cerrar la ventana se cierra el programa
-    server.stop_all_lives()
+    if already_running:
+        return   # ya habia otra copia funcionando: solo se abrio otra ventana
+
+    def close():
+        server.stop_all_lives()
+        os._exit(0)
+    server.CLOSE_HOOK = close
+    threading.Event().wait()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        text = traceback.format_exc()
+        print(text)
+        if getattr(sys, "frozen", False):
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, "Clip Agentes no pudo arrancar:\n\n" + text[-600:], "Clip Agentes", 0x10)
+        raise

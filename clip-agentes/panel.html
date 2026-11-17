@@ -1058,11 +1058,12 @@ function renderAccounts(){
     if(empty.length === inputs.length){
       // Primera vez: sin los datos de la app no hay inicio de sesión; se va directo a la página oficial donde se obtienen.
       notify('info', `Primera vez en ${acc.name}: crea la app en la página oficial, copia los 2 datos en esta tarjeta y pulsa de nuevo.`);
+      await api('/api/keepalive', {});
       location.href = acc.dev_url;
       return;
     }
     const r = await api('/api/accounts/connect',{net,fields});
-    if(r){ location.href = r.url; }   // directo a la página oficial de inicio de sesión; al terminar vuelve aquí solo
+    if(r){ await api('/api/keepalive', {}); location.href = r.url; }   // directo a la página oficial de inicio de sesión; al terminar vuelve aquí solo
     else card.querySelector('details.setup').open = true;
   });
 }
@@ -1214,6 +1215,8 @@ initPlayer('l', 'livePlayer', true, ()=>state.jobs.filter(j=>liveSel && j.live==
 paintBell();
 refresh();
 setInterval(refresh, 1000);
+// Al cerrar la ventana avisa al programa de escritorio para que termine (si no vuelve a pedir nada en unos segundos).
+window.addEventListener('pagehide', ()=>navigator.sendBeacon('/api/bye', new Blob(['{}'], {type:'application/json'})));
 </script>
 </body>
 </html>

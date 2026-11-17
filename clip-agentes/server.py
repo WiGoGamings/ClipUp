@@ -1301,6 +1301,33 @@ def api_radar_clear(body):
     return 200, {"ok": True}
 
 
+def busy():
+    with lock:
+        return (any(j["status"] == "processing" for j in jobs)
+                or any(s.status in ("connecting", "live") for s in LIVES.values()))
+
+
+def api_bye(body):
+    """La ventana se cerro: el programa termina cuando nadie vuelve a pedir nada y no queda trabajo en marcha."""
+    mark = time.time()
+
+    def later():
+        if not CLOSE_HOOK or LAST_REQUEST[0] > mark:
+            return   # la ventana volvio (recarga) o no es el programa de escritorio
+        if time.time() < KEEPALIVE_UNTIL[0] or busy():
+            threading.Timer(30, later).start()   # hay clips procesandose o directos grabando: se espera
+            return
+        CLOSE_HOOK()
+    threading.Timer(8, later).start()
+    return 200, {"ok": True}
+
+
+def api_keepalive(body):
+    """El panel va a ir a la pagina de una red para iniciar sesion: no cierres el programa mientras tanto."""
+    KEEPALIVE_UNTIL[0] = time.time() + 1800
+    return 200, {"ok": True}
+
+
 def api_state():
     ai = cerebro.status()
     with lock:
@@ -1317,6 +1344,9 @@ def api_state():
 
 
 # ---------- HTTP ----------
+LAST_REQUEST = [time.time()]
+KEEPALIVE_UNTIL = [0.0]
+CLOSE_HOOK = None   # lo pone app.py: cierra el programa cuando se cierra su ventana
 OAUTH_PAGE = """<!doctype html><meta charset="utf-8"><title>Clip Agentes</title>
 <body style="font-family:system-ui;background:#0a0612;color:#f5eefd;display:grid;place-items:center;height:100vh;margin:0">
 <div style="text-align:center;max-width:460px"><h2>{title}</h2><p>{msg}</p><p>Ya puedes cerrar esta pestana.</p></div>
@@ -1345,6 +1375,7 @@ class Handler(BaseHTTPRequestHandler):
                         "application/json; charset=utf-8")
 
     def do_GET(self):
+        LAST_REQUEST[0] = time.time()
         if not self.host_ok():
             return self.send_json(403, {"error": "host no permitido"})
         parsed = urlparse(self.path)
@@ -1442,6 +1473,7 @@ class Handler(BaseHTTPRequestHandler):
                 remaining -= len(chunk)
 
     def do_POST(self):
+        LAST_REQUEST[0] = time.time()
         if not self.host_ok():
             return self.send_json(403, {"error": "host no permitido"})
         routes = {"/api/process": api_process,
@@ -1453,7 +1485,8 @@ class Handler(BaseHTTPRequestHandler):
                   "/api/live/remove": api_live_remove, "/api/brand/logo": api_brand_logo,
                   "/api/brand/settings": api_brand_settings, "/api/brand/clear": api_brand_clear,
                   "/api/radar/save": api_radar_save, "/api/radar/scan": api_radar_scan,
-                  "/api/radar/test": api_radar_test, "/api/radar/clear": api_radar_clear}
+                  "/api/radar/test": api_radar_test, "/api/radar/clear": api_radar_clear,
+                  "/api/bye": api_bye, "/api/keepalive": api_keepalive}
         handler = routes.get(urlparse(self.path).path)
         if not handler:
             return self.send_json(404, {"error": "no encontrado"})
@@ -1485,15 +1518,22 @@ def stop_all_lives():
             session.stop()
 
 
+def warm_up():
+    """Tareas lentas de arranque: el panel ya responde mientras se hacen."""
+    kill_orphan_recorders()
+    ia.preload()
+    with contextlib.suppress(Exception):
+        cerebro.llm_json("Reply with JSON.", '{"ok": 1}', max_tokens=5)
+    for name, ok in tools_status().items():
+        print(f"{name}: {'OK' if ok else 'FALTA'}")
+    print(f"codificador de video: {hw_encoder() or 'procesador (libx264)'}")
+
+
 def main():
     for folder in (VIDEOS, CLIPS, WORK, PUBLISHED):
         folder.mkdir(exist_ok=True)
-    kill_orphan_recorders()
     atexit.register(stop_all_lives)
     load()
-    ia.preload()
-    threading.Thread(target=lambda: cerebro.llm_json("Reply with JSON.", '{"ok": 1}', max_tokens=5),
-                     daemon=True).start()
     threading.Thread(target=worker, daemon=True).start()
     radar.configure(ytdlp_cmd(), find_tool("ffmpeg"))
     if publicar.ACCOUNTS_FILE.is_file():
@@ -1501,10 +1541,8 @@ def main():
     if radar.FILE.is_file():
         radar._save(radar._load())
     radar.start()
-    for name, ok in tools_status().items():
-        print(f"{name}: {'OK' if ok else 'FALTA'}")
-    print(f"codificador de video: {hw_encoder() or 'procesador (libx264)'}")
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    threading.Thread(target=warm_up, daemon=True).start()
     print(f"Panel en http://127.0.0.1:{PORT}  (Ctrl+C para salir)")
     with contextlib.suppress(KeyboardInterrupt):
         server.serve_forever()
