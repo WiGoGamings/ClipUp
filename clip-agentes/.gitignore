@@ -8,3 +8,7 @@ __pycache__/
 marca.json
 assets/
 radar.json
+build/
+dist/
+salida/
+*.spec

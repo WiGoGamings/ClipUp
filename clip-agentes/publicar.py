@@ -11,9 +11,10 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import rutas
 import secreto
 
-BASE = Path(__file__).resolve().parent
+BASE = rutas.DATA
 ACCOUNTS_FILE = BASE / "cuentas.json"
 GRAPH = "https://graph.facebook.com/v21.0"
 PORT = 8765

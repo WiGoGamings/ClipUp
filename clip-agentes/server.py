@@ -33,14 +33,15 @@ import marca
 import publicar
 import radar
 import reaccion
+import rutas
 
-BASE = Path(__file__).resolve().parent
+BASE = rutas.DATA
 VIDEOS = BASE / "videos"
 CLIPS = BASE / "clips"
 WORK = BASE / "trabajo"
 PUBLISHED = BASE / "publicados"
 JOBS_FILE = BASE / "jobs.json"
-PANEL = BASE / "panel.html"
+PANEL = rutas.RES / "panel.html"
 PORT = publicar.PORT
 
 AGENTS = [
@@ -88,6 +89,9 @@ PROCS = {}
 # ---------- herramientas ----------
 @lru_cache(maxsize=None)
 def find_tool(name):
+    bundled = rutas.APP_DIR / "ffmpeg" / f"{name}.exe"
+    if bundled.is_file():
+        return str(bundled)
     found = shutil.which(name)
     if found:
         return found
@@ -99,6 +103,8 @@ def find_tool(name):
 
 @lru_cache(maxsize=None)
 def ytdlp_cmd():
+    if rutas.FROZEN:
+        return [sys.executable, "--ytdlp"]   # el propio programa hace de yt-dlp (ver app.py)
     if importlib.util.find_spec("yt_dlp"):
         return [sys.executable, "-m", "yt_dlp"]
     exe = shutil.which("yt-dlp")
@@ -1350,7 +1356,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/brand/logo.png" and marca.has_logo():
             self.send_bytes(200, marca.LOGO.read_bytes(), "image/png")
         elif path == "/vendor/hls.min.js":
-            self.send_bytes(200, (BASE / "vendor" / "hls.min.js").read_bytes(), "text/javascript; charset=utf-8")
+            self.send_bytes(200, (rutas.RES / "vendor" / "hls.min.js").read_bytes(), "text/javascript; charset=utf-8")
         elif path.startswith("/live/"):
             self.serve_live(path[len("/live/"):])
         elif path.startswith("/media/"):

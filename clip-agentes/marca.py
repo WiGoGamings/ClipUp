@@ -6,7 +6,9 @@ import subprocess
 import threading
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent
+import rutas
+
+BASE = rutas.DATA
 ASSETS = BASE / "assets"
 LOGO = ASSETS / "logo.png"
 CONFIG = BASE / "marca.json"

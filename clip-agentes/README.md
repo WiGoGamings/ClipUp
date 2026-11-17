@@ -11,6 +11,13 @@ publican en tus redes. Todo corre en tu PC; nada se envía a servidores propios.
 
 ## Uso
 
+**Como programa de Windows**: instala `ClipAgentes-Setup.exe` (incluye ffmpeg; no hace falta Python). Se abre en su
+propia ventana y al cerrarla se cierra el programa. Tus datos quedan en `%APPDATA%\ClipAgentes`. Para crear el
+instalador: `pip install pyinstaller -r requirements.txt` y `python construir.py` (necesita ffmpeg e
+[Inno Setup](https://jrsoftware.org/isinfo.php) instalados) -> `salida/ClipAgentes-Setup.exe`.
+
+**Desde el código**:
+
 ```
 pip install -r requirements.txt
 python server.py        # o doble clic en iniciar.bat

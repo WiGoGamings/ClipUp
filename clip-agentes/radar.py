@@ -17,9 +17,10 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 import publicar
+import rutas
 import secreto
 
-BASE = Path(__file__).resolve().parent
+BASE = rutas.DATA
 FILE = BASE / "radar.json"
 DOWNLOADS = BASE / "videos" / "virales"
 
