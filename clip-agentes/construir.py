@@ -65,6 +65,25 @@ def find_inno():
     return shutil.which("iscc")
 
 
+def bundle_whisper(dest):
+    """Copia el modelo de voz a texto dentro del programa para que funcione sin internet la primera vez."""
+    from huggingface_hub import snapshot_download
+    src = Path(snapshot_download("Systran/faster-whisper-base"))
+    dest.mkdir(parents=True, exist_ok=True)
+    for f in src.iterdir():
+        if f.is_file() or f.is_symlink():
+            shutil.copyfile(f.resolve(), dest / f.name)
+
+
+def sha256(path):
+    import hashlib
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def main():
     icon = HERE / "icono.ico"
     if not icon.is_file():
@@ -79,12 +98,15 @@ def main():
     target.mkdir(parents=True, exist_ok=True)
     for exe in find_ffmpeg():
         shutil.copy2(exe, target / exe.name)
+    bundle_whisper(HERE / "dist" / "ClipAgentes" / "modelos" / "whisper-base")
 
     iscc = find_inno()
     if not iscc:
         print("\nPrograma listo en dist/ClipAgentes. Para el instalador instala Inno Setup (winget install JRSoftware.InnoSetup).")
         return
     sh(iscc, f"/DVersion={VERSION}", "instalador.iss")
+    setup = HERE / "salida" / "ClipAgentes-Setup.exe"
+    (HERE / "salida" / "ClipAgentes-Setup.exe.sha256").write_text(f"{sha256(setup)}  {setup.name}\n")
     print("\nInstalador listo: salida/ClipAgentes-Setup.exe")
 
 

@@ -8,6 +8,8 @@ import threading
 import time
 from pathlib import Path
 
+import rutas
+
 VOICES = {"es": "es-MX-JorgeNeural", "en": "en-US-AndrewNeural"}
 SAPI_VOICES = {"es": "Microsoft Helena Desktop", "en": "Microsoft David Desktop"}
 MYMEMORY_CODES = {"es": "es-ES", "en": "en-US"}
@@ -32,12 +34,14 @@ def _whisper():
             except ImportError:
                 raise IAError("Falta faster-whisper. Corre: pip install faster-whisper")
             threads = os.cpu_count() or 4
+            bundled = rutas.APP_DIR / "modelos" / "whisper-base"   # viene dentro del instalador: funciona sin internet
+            source = str(bundled) if bundled.is_dir() else "base"
             try:
                 # Primero desde el cache local: evita consultar internet en cada arranque.
-                _model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=threads,
+                _model = WhisperModel(source, device="cpu", compute_type="int8", cpu_threads=threads,
                                       local_files_only=True)
             except Exception:
-                _model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=threads)
+                _model = WhisperModel(source, device="cpu", compute_type="int8", cpu_threads=threads)
         return _model
 
 

@@ -47,6 +47,18 @@ def serving(url):
         return False
 
 
+def ensure_ollama():
+    """Si la IA local (Ollama) esta instalada pero apagada, la enciende en segundo plano."""
+    if serving("http://127.0.0.1:11434") or not shutil.which("ollama") and not OLLAMA_EXE.is_file():
+        return
+    exe = shutil.which("ollama") or str(OLLAMA_EXE)
+    subprocess.Popen([exe, "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     creationflags=subprocess.CREATE_NO_WINDOW)
+
+
+OLLAMA_EXE = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--ytdlp":
         return run_ytdlp()
@@ -57,6 +69,7 @@ def main():
     import server
 
     url = f"http://127.0.0.1:{publicar.PORT}"
+    ensure_ollama()
     if not serving(url):
         threading.Thread(target=server.main, daemon=True).start()
         for _ in range(100):

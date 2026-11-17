@@ -26,13 +26,17 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; Flags: unchecked
+Name: "iatask"; Description: "Instalar la IA local (Ollama + modelo, unos 5 GB, necesita internet)"
 
 [Files]
 Source: "dist\ClipAgentes\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "instalar-ia.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Clip Agentes"; Filename: "{app}\ClipAgentes.exe"
+Name: "{autoprograms}\Instalar la IA de Clip Agentes"; Filename: "{app}\instalar-ia.bat"
 Name: "{autodesktop}\Clip Agentes"; Filename: "{app}\ClipAgentes.exe"; Tasks: desktopicon
 
 [Run]
+Filename: "{app}\instalar-ia.bat"; Description: "Instalando la IA local"; Flags: waituntilterminated; Tasks: iatask
 Filename: "{app}\ClipAgentes.exe"; Description: "Abrir Clip Agentes"; Flags: nowait postinstall skipifsilent
